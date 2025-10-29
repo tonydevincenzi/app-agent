@@ -30,11 +30,26 @@ export function getModelClient(model: LLMModel, config: LLMModelConfig) {
   const { apiKey, baseURL } = config
 
   const providerConfigs = {
-    anthropic: () => createAnthropic({ apiKey, baseURL })(modelNameString),
-    openai: () => createOpenAI({ apiKey, baseURL })(modelNameString),
+    anthropic: () =>
+      createAnthropic({
+        apiKey: apiKey || process.env.ANTHROPIC_API_KEY,
+        baseURL,
+      })(modelNameString),
+    openai: () =>
+      createOpenAI({
+        apiKey: apiKey || process.env.OPENAI_API_KEY,
+        baseURL,
+      })(modelNameString),
     google: () =>
-      createGoogleGenerativeAI({ apiKey, baseURL })(modelNameString),
-    mistral: () => createMistral({ apiKey, baseURL })(modelNameString),
+      createGoogleGenerativeAI({
+        apiKey: apiKey || process.env.GOOGLE_AI_API_KEY,
+        baseURL,
+      })(modelNameString),
+    mistral: () =>
+      createMistral({
+        apiKey: apiKey || process.env.MISTRAL_API_KEY,
+        baseURL,
+      })(modelNameString),
     groq: () =>
       createOpenAI({
         apiKey: apiKey || process.env.GROQ_API_KEY,
