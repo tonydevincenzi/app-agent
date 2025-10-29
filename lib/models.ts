@@ -29,43 +29,52 @@ export function getModelClient(model: LLMModel, config: LLMModelConfig) {
   const { id: modelNameString, providerId } = model
   const { apiKey, baseURL } = config
 
+  // Helper to build config with conditional apiKey
+  // Only includes apiKey property if we have a value, allowing SDK to check env vars
+  const buildConfig = (
+    envVar: string | undefined,
+    defaultBaseURL?: string,
+  ) => {
+    const resolvedApiKey = apiKey || envVar
+    return {
+      ...(resolvedApiKey && { apiKey: resolvedApiKey }),
+      ...(baseURL && { baseURL }),
+      ...(!baseURL && defaultBaseURL && { baseURL: defaultBaseURL }),
+    }
+  }
+
   const providerConfigs = {
     anthropic: () =>
-      createAnthropic({
-        apiKey: apiKey || process.env.ANTHROPIC_API_KEY,
-        baseURL,
-      })(modelNameString),
+      createAnthropic(buildConfig(process.env.ANTHROPIC_API_KEY))(
+        modelNameString,
+      ),
     openai: () =>
-      createOpenAI({
-        apiKey: apiKey || process.env.OPENAI_API_KEY,
-        baseURL,
-      })(modelNameString),
+      createOpenAI(buildConfig(process.env.OPENAI_API_KEY))(modelNameString),
     google: () =>
-      createGoogleGenerativeAI({
-        apiKey: apiKey || process.env.GOOGLE_AI_API_KEY,
-        baseURL,
-      })(modelNameString),
+      createGoogleGenerativeAI(buildConfig(process.env.GOOGLE_AI_API_KEY))(
+        modelNameString,
+      ),
     mistral: () =>
-      createMistral({
-        apiKey: apiKey || process.env.MISTRAL_API_KEY,
-        baseURL,
-      })(modelNameString),
+      createMistral(buildConfig(process.env.MISTRAL_API_KEY))(modelNameString),
     groq: () =>
-      createOpenAI({
-        apiKey: apiKey || process.env.GROQ_API_KEY,
-        baseURL: baseURL || 'https://api.groq.com/openai/v1',
-      })(modelNameString),
+      createOpenAI(
+        buildConfig(process.env.GROQ_API_KEY, 'https://api.groq.com/openai/v1'),
+      )(modelNameString),
     togetherai: () =>
-      createOpenAI({
-        apiKey: apiKey || process.env.TOGETHER_API_KEY,
-        baseURL: baseURL || 'https://api.together.xyz/v1',
-      })(modelNameString),
+      createOpenAI(
+        buildConfig(
+          process.env.TOGETHER_API_KEY,
+          'https://api.together.xyz/v1',
+        ),
+      )(modelNameString),
     ollama: () => createOllama({ baseURL })(modelNameString),
     fireworks: () =>
-      createFireworks({
-        apiKey: apiKey || process.env.FIREWORKS_API_KEY,
-        baseURL: baseURL || 'https://api.fireworks.ai/inference/v1',
-      })(modelNameString),
+      createFireworks(
+        buildConfig(
+          process.env.FIREWORKS_API_KEY,
+          'https://api.fireworks.ai/inference/v1',
+        ),
+      )(modelNameString),
     vertex: () =>
       createVertex({
         googleAuthOptions: {
@@ -75,15 +84,13 @@ export function getModelClient(model: LLMModel, config: LLMModelConfig) {
         },
       })(modelNameString),
     xai: () =>
-      createOpenAI({
-        apiKey: apiKey || process.env.XAI_API_KEY,
-        baseURL: baseURL || 'https://api.x.ai/v1',
-      })(modelNameString),
+      createOpenAI(
+        buildConfig(process.env.XAI_API_KEY, 'https://api.x.ai/v1'),
+      )(modelNameString),
     deepseek: () =>
-      createOpenAI({
-        apiKey: apiKey || process.env.DEEPSEEK_API_KEY,
-        baseURL: baseURL || 'https://api.deepseek.com/v1',
-      })(modelNameString),
+      createOpenAI(
+        buildConfig(process.env.DEEPSEEK_API_KEY, 'https://api.deepseek.com/v1'),
+      )(modelNameString),
   }
 
   const createClient =
