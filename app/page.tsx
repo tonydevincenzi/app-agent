@@ -22,7 +22,7 @@ export default function Home() {
   const [languageModel, setLanguageModel] = useLocalStorage<LLMModelConfig>(
     'languageModel',
     {
-      model: 'claude-3-5-sonnet-latest',
+      model: 'claude-haiku-4-5-20251001',
     },
   )
 
@@ -42,6 +42,15 @@ export default function Home() {
   const [selectedTab, setSelectedTab] = useState<'code' | 'fragment'>('code')
 
   const filteredModels = modelsList.models.filter((model) => {
+    // Only show GPT 5 series, Sonnet 4.5 series, and Haiku 4.5
+    const isGPT5 = model.id.startsWith('gpt-5')
+    const isSonnet45 = model.id.includes('sonnet-4-5')
+    const isHaiku45 = model.id.includes('haiku-4-5')
+    
+    if (!isGPT5 && !isSonnet45 && !isHaiku45) {
+      return false
+    }
+    
     if (process.env.NEXT_PUBLIC_HIDE_LOCAL_MODELS) {
       return model.providerId !== 'ollama'
     }

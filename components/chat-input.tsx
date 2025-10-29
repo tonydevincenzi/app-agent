@@ -236,7 +236,7 @@ export function ChatInput({
                               width={14}
                               height={14}
                             />
-                            <span>{model.name}</span>
+                            <span className="text-muted-foreground">{model.name}</span>
                           </div>
                         </SelectItem>
                       ))}

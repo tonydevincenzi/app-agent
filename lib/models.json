@@ -113,6 +113,13 @@
       "multiModal": true
     },
     {
+      "id": "claude-haiku-4-5-20251001",
+      "provider": "Anthropic",
+      "providerId": "anthropic",
+      "name": "Claude Haiku 4.5",
+      "multiModal": true
+    },
+    {
       "id": "claude-opus-4-1-20250805",
       "provider": "Anthropic",
       "providerId": "anthropic",
