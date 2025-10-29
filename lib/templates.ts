@@ -1,6 +1,8 @@
 export function getTemplateIdSuffix(id: string) {
-  const isDev = process.env.NODE_ENV === 'development'
-  return isDev ? `${id}-dev` : id
+  // Temporarily disabled -dev suffix until templates are built
+  // const isDev = process.env.NODE_ENV === 'development'
+  // return isDev ? `${id}-dev` : id
+  return id
 }
 
 export function getTemplateId(id: string) {
