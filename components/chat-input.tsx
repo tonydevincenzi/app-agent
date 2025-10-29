@@ -11,6 +11,18 @@ import { isFileInArray } from '@/lib/utils'
 import { ArrowUp, Code, Paperclip, Square, Undo, X } from 'lucide-react'
 import { SetStateAction, useEffect, useMemo, useState } from 'react'
 import TextareaAutosize from 'react-textarea-autosize'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { LLMModel, LLMModelConfig } from '@/lib/models'
+import Image from 'next/image'
+import 'core-js/features/object/group-by.js'
 
 export function ChatInput({
   retry,
@@ -32,6 +44,9 @@ export function ChatInput({
   showCodeView = false,
   onToggleCodeView,
   hasFragment = false,
+  models,
+  languageModel,
+  onLanguageModelChange,
 }: {
   retry: () => void
   isErrored: boolean
@@ -52,6 +67,9 @@ export function ChatInput({
   showCodeView?: boolean
   onToggleCodeView: () => void
   hasFragment?: boolean
+  models?: LLMModel[]
+  languageModel?: LLMModelConfig
+  onLanguageModelChange?: (config: LLMModelConfig) => void
 }) {
   function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
     handleFileChange((prev) => {
@@ -191,7 +209,43 @@ export function ChatInput({
               : ''
           }`}
         >
-          <div className="flex items-center px-3 py-2 gap-1">{children}</div>
+          <div className="flex items-center px-3 py-2 gap-1">
+            {children}
+            {models && languageModel && onLanguageModelChange && (
+              <Select
+                name="languageModel"
+                value={languageModel.model}
+                onValueChange={(e) => onLanguageModelChange({ model: e })}
+              >
+                <SelectTrigger className="whitespace-nowrap border-none shadow-none focus:ring-0 px-2 py-1 h-6 text-xs">
+                  <SelectValue placeholder="Model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(
+                    Object.groupBy(models, ({ provider }) => provider),
+                  ).map(([provider, models]) => (
+                    <SelectGroup key={provider}>
+                      <SelectLabel>{provider}</SelectLabel>
+                      {models?.map((model) => (
+                        <SelectItem key={model.id} value={model.id}>
+                          <div className="flex items-center space-x-2">
+                            <Image
+                              className="flex"
+                              src={`/thirdparty/logos/${model.providerId}.svg`}
+                              alt={model.provider}
+                              width={14}
+                              height={14}
+                            />
+                            <span>{model.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
           <TextareaAutosize
             autoFocus={true}
             minRows={1}

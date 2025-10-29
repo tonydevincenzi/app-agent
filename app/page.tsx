@@ -19,7 +19,7 @@ export default function Home() {
   const [chatInput, setChatInput] = useLocalStorage('chat', '')
   const [files, setFiles] = useState<File[]>([])
   const [selectedTemplate] = useState<string>('auto')
-  const [languageModel] = useLocalStorage<LLMModelConfig>(
+  const [languageModel, setLanguageModel] = useLocalStorage<LLMModelConfig>(
     'languageModel',
     {
       model: 'claude-3-5-sonnet-latest',
@@ -238,7 +238,7 @@ export default function Home() {
                 messages={messages}
                 isLoading={isLoading}
                 onViewCode={() => setShowCodeView(true)}
-                hasFragment={!!fragment && !!fragment.code}
+                hasFragment={!!fragment && (!!fragment.code || isLoading)}
               />
             </div>
           )}
@@ -260,16 +260,17 @@ export default function Home() {
             canUndo={messages.length > 1 && !isLoading}
             showCodeView={showCodeView}
             onToggleCodeView={() => setShowCodeView(!showCodeView)}
-            hasFragment={!!fragment && !!fragment.code}
+            hasFragment={!!fragment && (!!fragment.code || isLoading)}
+            models={filteredModels}
+            languageModel={languageModel}
+            onLanguageModelChange={setLanguageModel}
           >
           </ChatInput>
         </div>
       </div>
-      {showCodeView && fragment && (
+      {showCodeView && (fragment || isLoading) && (
         <div className="fixed right-0 top-0 h-full w-full md:w-[600px] z-50">
           <Preview
-            teamID={undefined}
-            accessToken={undefined}
             selectedTab={selectedTab}
             onSelectedTabChange={setSelectedTab}
             isChatLoading={isLoading}
