@@ -17,9 +17,15 @@ export type MessageImage = {
   image: string
 }
 
+export type MessageUrl = {
+  type: 'url'
+  url: string
+  text?: string
+}
+
 export type Message = {
   role: 'assistant' | 'user'
-  content: Array<MessageText | MessageCode | MessageImage>
+  content: Array<MessageText | MessageCode | MessageImage | MessageUrl>
   object?: DeepPartial<FragmentSchema>
   result?: ExecutionResult
 }

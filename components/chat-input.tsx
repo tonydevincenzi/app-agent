@@ -1,6 +1,5 @@
 'use client'
 
-import { RepoBanner } from './repo-banner'
 import { Button } from '@/components/ui/button'
 import {
   Tooltip,
@@ -9,7 +8,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { isFileInArray } from '@/lib/utils'
-import { ArrowUp, Paperclip, Square, X } from 'lucide-react'
+import { ArrowUp, Code, Paperclip, Square, Undo, X } from 'lucide-react'
 import { SetStateAction, useEffect, useMemo, useState } from 'react'
 import TextareaAutosize from 'react-textarea-autosize'
 
@@ -27,6 +26,12 @@ export function ChatInput({
   files,
   handleFileChange,
   children,
+  centered = false,
+  onUndo,
+  canUndo,
+  showCodeView = false,
+  onToggleCodeView,
+  hasFragment = false,
 }: {
   retry: () => void
   isErrored: boolean
@@ -41,6 +46,12 @@ export function ChatInput({
   files: File[]
   handleFileChange: (change: SetStateAction<File[]>) => void
   children: React.ReactNode
+  centered?: boolean
+  onUndo: () => void
+  canUndo: boolean
+  showCodeView?: boolean
+  onToggleCodeView: () => void
+  hasFragment?: boolean
 }) {
   function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
     handleFileChange((prev) => {
@@ -147,7 +158,7 @@ export function ChatInput({
     <form
       onSubmit={handleSubmit}
       onKeyDown={onEnter}
-      className="mb-2 mt-auto flex flex-col bg-background"
+      className="mb-2 flex flex-col bg-background"
       onDragEnter={isMultiModal ? handleDrag : undefined}
       onDragLeave={isMultiModal ? handleDrag : undefined}
       onDragOver={isMultiModal ? handleDrag : undefined}
@@ -173,7 +184,6 @@ export function ChatInput({
         </div>
       )}
       <div className="relative">
-        <RepoBanner className="absolute bottom-full inset-x-2 translate-y-1 z-0 pb-2" />
         <div
           className={`shadow-md rounded-2xl relative z-10 bg-background border ${
             dragActive
@@ -227,7 +237,48 @@ export function ChatInput({
               </TooltipProvider>
               {files.length > 0 && filePreview}
             </div>
-            <div>
+            <div className="flex gap-2">
+              {hasFragment && (
+                <TooltipProvider>
+                  <Tooltip delayDuration={0}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={showCodeView ? "default" : "secondary"}
+                        size="icon"
+                        type="button"
+                        className="rounded-xl h-10 w-10"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          onToggleCodeView()
+                        }}
+                      >
+                        <Code className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>View Code</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              <TooltipProvider>
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      disabled={!canUndo}
+                      variant="secondary"
+                      size="icon"
+                      type="button"
+                      className="rounded-xl h-10 w-10"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        onUndo()
+                      }}
+                    >
+                      <Undo className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Undo</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               {!isLoading ? (
                 <TooltipProvider>
                   <Tooltip delayDuration={0}>
@@ -269,12 +320,6 @@ export function ChatInput({
           </div>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground mt-2 text-center">
-        Fragments is an open-source project made by{' '}
-        <a href="https://e2b.dev" target="_blank" className="text-[#ff8800]">
-          ✶ E2B
-        </a>
-      </p>
     </form>
   )
 }

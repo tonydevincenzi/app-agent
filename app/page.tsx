@@ -1,19 +1,12 @@
 'use client'
 
-import { ViewType } from '@/components/auth'
-import { AuthDialog } from '@/components/auth-dialog'
 import { Chat } from '@/components/chat'
 import { ChatInput } from '@/components/chat-input'
-import { ChatPicker } from '@/components/chat-picker'
-import { ChatSettings } from '@/components/chat-settings'
-import { NavBar } from '@/components/navbar'
 import { Preview } from '@/components/preview'
-import { useAuth } from '@/lib/auth'
 import { Message, toAISDKMessages, toMessageImage } from '@/lib/messages'
 import { LLMModelConfig } from '@/lib/models'
 import modelsList from '@/lib/models.json'
 import { FragmentSchema, fragmentSchema as schema } from '@/lib/schema'
-import { supabase } from '@/lib/supabase'
 import templates from '@/lib/templates'
 import { ExecutionResult } from '@/lib/types'
 import { DeepPartial } from 'ai'
@@ -25,10 +18,8 @@ import { useLocalStorage } from 'usehooks-ts'
 export default function Home() {
   const [chatInput, setChatInput] = useLocalStorage('chat', '')
   const [files, setFiles] = useState<File[]>([])
-  const [selectedTemplate, setSelectedTemplate] = useState<string>(
-    'auto',
-  )
-  const [languageModel, setLanguageModel] = useLocalStorage<LLMModelConfig>(
+  const [selectedTemplate] = useState<string>('auto')
+  const [languageModel] = useLocalStorage<LLMModelConfig>(
     'languageModel',
     {
       model: 'claude-3-5-sonnet-latest',
@@ -40,17 +31,15 @@ export default function Home() {
   const [result, setResult] = useState<ExecutionResult>()
   const [messages, setMessages] = useState<Message[]>([])
   const [fragment, setFragment] = useState<DeepPartial<FragmentSchema>>()
-  const [currentTab, setCurrentTab] = useState<'code' | 'fragment'>('code')
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
-  const [isAuthDialogOpen, setAuthDialog] = useState(false)
-  const [authView, setAuthView] = useState<ViewType>('sign_in')
   const [isRateLimited, setIsRateLimited] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
-  const { session, userTeam } = useAuth(setAuthDialog, setAuthView)
-  const [useMorphApply, setUseMorphApply] = useLocalStorage(
+  const [useMorphApply] = useLocalStorage(
     'useMorphApply',
     process.env.NEXT_PUBLIC_USE_MORPH_APPLY === 'true',
   )
+  const [showCodeView, setShowCodeView] = useState(false)
+  const [selectedTab, setSelectedTab] = useState<'code' | 'fragment'>('code')
 
   const filteredModels = modelsList.models.filter((model) => {
     if (process.env.NEXT_PUBLIC_HIDE_LOCAL_MODELS) {
@@ -97,9 +86,9 @@ export default function Home() {
           method: 'POST',
           body: JSON.stringify({
             fragment,
-            userID: session?.user?.id,
-            teamID: userTeam?.id,
-            accessToken: session?.access_token,
+            userID: undefined,
+            teamID: undefined,
+            accessToken: undefined,
           }),
         })
 
@@ -108,9 +97,20 @@ export default function Home() {
         posthog.capture('sandbox_created', { url: result.url })
 
         setResult(result)
-        setCurrentPreview({ fragment, result })
-        setMessage({ result })
-        setCurrentTab('fragment')
+        
+        // Add URL as a separate message with only the URL
+        if (result.url) {
+          addMessage({
+            role: 'assistant',
+            content: [
+              {
+                type: 'url',
+                url: result.url,
+              }
+            ],
+            result
+          })
+        }
         setIsPreviewLoading(false)
       }
     },
@@ -120,22 +120,19 @@ export default function Home() {
     if (object) {
       setFragment(object)
       const content: Message['content'] = [
-        { type: 'text', text: object.commentary || '' },
-        { type: 'code', text: object.code || '' },
+        { type: 'text', text: 'Building your app...' },
       ]
 
       if (!lastMessage || lastMessage.role !== 'assistant') {
         addMessage({
           role: 'assistant',
           content,
-          object,
         })
       }
 
       if (lastMessage && lastMessage.role === 'assistant') {
         setMessage({
           content,
-          object,
         })
       }
     }
@@ -160,10 +157,6 @@ export default function Home() {
   async function handleSubmitAuth(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
-    if (!session) {
-      return setAuthDialog(true)
-    }
-
     if (isLoading) {
       stop()
     }
@@ -183,8 +176,8 @@ export default function Home() {
     })
 
     submit({
-      userID: session?.user?.id,
-      teamID: userTeam?.id,
+      userID: undefined,
+      teamID: undefined,
       messages: toAISDKMessages(updatedMessages),
       template: currentTemplate,
       model: currentModel,
@@ -194,7 +187,6 @@ export default function Home() {
 
     setChatInput('')
     setFiles([])
-    setCurrentTab('code')
 
     posthog.capture('chat_submit', {
       template: selectedTemplate,
@@ -204,8 +196,8 @@ export default function Home() {
 
   function retry() {
     submit({
-      userID: session?.user?.id,
-      teamID: userTeam?.id,
+      userID: undefined,
+      teamID: undefined,
       messages: toAISDKMessages(messages),
       template: currentTemplate,
       model: currentModel,
@@ -227,81 +219,29 @@ export default function Home() {
     setFiles(change)
   }
 
-  function logout() {
-    supabase
-      ? supabase.auth.signOut()
-      : console.warn('Supabase is not initialized')
-  }
-
-  function handleLanguageModelChange(e: LLMModelConfig) {
-    setLanguageModel({ ...languageModel, ...e })
-  }
-
-  function handleSocialClick(target: 'github' | 'x' | 'discord') {
-    if (target === 'github') {
-      window.open('https://github.com/e2b-dev/fragments', '_blank')
-    } else if (target === 'x') {
-      window.open('https://x.com/e2b', '_blank')
-    } else if (target === 'discord') {
-      window.open('https://discord.gg/e2b', '_blank')
-    }
-
-    posthog.capture(`${target}_click`)
-  }
-
-  function handleClearChat() {
-    stop()
-    setChatInput('')
-    setFiles([])
-    setMessages([])
-    setFragment(undefined)
-    setResult(undefined)
-    setCurrentTab('code')
-    setIsPreviewLoading(false)
-  }
-
-  function setCurrentPreview(preview: {
-    fragment: DeepPartial<FragmentSchema> | undefined
-    result: ExecutionResult | undefined
-  }) {
-    setFragment(preview.fragment)
-    setResult(preview.result)
-  }
-
   function handleUndo() {
     setMessages((previousMessages) => [...previousMessages.slice(0, -2)])
-    setCurrentPreview({ fragment: undefined, result: undefined })
+    setFragment(undefined)
+    setResult(undefined)
+    setShowCodeView(false)
   }
 
+  const hasMessages = messages.length > 0
+
   return (
-    <main className="flex min-h-screen max-h-screen">
-      {supabase && (
-        <AuthDialog
-          open={isAuthDialogOpen}
-          setOpen={setAuthDialog}
-          view={authView}
-          supabase={supabase}
-        />
-      )}
-      <div className="grid w-full md:grid-cols-2">
-        <div
-          className={`flex flex-col w-full max-h-full max-w-[800px] mx-auto px-4 overflow-auto ${fragment ? 'col-span-1' : 'col-span-2'}`}
-        >
-          <NavBar
-            session={session}
-            showLogin={() => setAuthDialog(true)}
-            signOut={logout}
-            onSocialClick={handleSocialClick}
-            onClear={handleClearChat}
-            canClear={messages.length > 0}
-            canUndo={messages.length > 1 && !isLoading}
-            onUndo={handleUndo}
-          />
-          <Chat
-            messages={messages}
-            isLoading={isLoading}
-            setCurrentPreview={setCurrentPreview}
-          />
+    <main className="flex min-h-screen h-screen">
+      <div className="flex flex-col w-full h-full items-center justify-center px-4">
+        <div className="flex flex-col w-full max-w-[500px] max-h-full">
+          {hasMessages && (
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <Chat
+                messages={messages}
+                isLoading={isLoading}
+                onViewCode={() => setShowCodeView(true)}
+                hasFragment={!!fragment && !!fragment.code}
+              />
+            </div>
+          )}
           <ChatInput
             retry={retry}
             isErrored={error !== undefined}
@@ -315,37 +255,31 @@ export default function Home() {
             isMultiModal={currentModel?.multiModal || false}
             files={files}
             handleFileChange={handleFileChange}
+            centered={false}
+            onUndo={handleUndo}
+            canUndo={messages.length > 1 && !isLoading}
+            showCodeView={showCodeView}
+            onToggleCodeView={() => setShowCodeView(!showCodeView)}
+            hasFragment={!!fragment && !!fragment.code}
           >
-            <ChatPicker
-              templates={templates}
-              selectedTemplate={selectedTemplate}
-              onSelectedTemplateChange={setSelectedTemplate}
-              models={filteredModels}
-              languageModel={languageModel}
-              onLanguageModelChange={handleLanguageModelChange}
-            />
-            <ChatSettings
-              languageModel={languageModel}
-              onLanguageModelChange={handleLanguageModelChange}
-              apiKeyConfigurable={!process.env.NEXT_PUBLIC_NO_API_KEY_INPUT}
-              baseURLConfigurable={!process.env.NEXT_PUBLIC_NO_BASE_URL_INPUT}
-              useMorphApply={useMorphApply}
-              onUseMorphApplyChange={setUseMorphApply}
-            />
           </ChatInput>
         </div>
-        <Preview
-          teamID={userTeam?.id}
-          accessToken={session?.access_token}
-          selectedTab={currentTab}
-          onSelectedTabChange={setCurrentTab}
-          isChatLoading={isLoading}
-          isPreviewLoading={isPreviewLoading}
-          fragment={fragment}
-          result={result as ExecutionResult}
-          onClose={() => setFragment(undefined)}
-        />
       </div>
+      {showCodeView && fragment && (
+        <div className="fixed right-0 top-0 h-full w-full md:w-[600px] z-50">
+          <Preview
+            teamID={undefined}
+            accessToken={undefined}
+            selectedTab={selectedTab}
+            onSelectedTabChange={setSelectedTab}
+            isChatLoading={isLoading}
+            isPreviewLoading={isPreviewLoading}
+            fragment={fragment}
+            result={result}
+            onClose={() => setShowCodeView(false)}
+          />
+        </div>
+      )}
     </main>
   )
 }
