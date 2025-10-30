@@ -12,7 +12,7 @@ import { ExecutionResult } from '@/lib/types'
 import { DeepPartial } from 'ai'
 import { experimental_useObject as useObject } from 'ai/react'
 import { usePostHog } from 'posthog-js/react'
-import { SetStateAction, useEffect, useState } from 'react'
+import { SetStateAction, useEffect, useRef, useState } from 'react'
 import { useLocalStorage } from 'usehooks-ts'
 
 export default function Home() {
@@ -40,6 +40,9 @@ export default function Home() {
   )
   const [showCodeView, setShowCodeView] = useState(false)
   const [selectedTab, setSelectedTab] = useState<'code' | 'fragment'>('code')
+  const generatedMessageRef = useRef<string | null>(null)
+  const hasGeneratedMessageRef = useRef(false)
+  const buildingMessageIndexRef = useRef<number | null>(null)
 
   const filteredModels = modelsList.models.filter((model) => {
     // Only show GPT 5 series, Sonnet 4.5 series, and Haiku 4.5
@@ -128,28 +131,145 @@ export default function Home() {
   useEffect(() => {
     if (object) {
       setFragment(object)
-      const content: Message['content'] = [
-        { type: 'text', text: 'Building your app...' },
-      ]
+      
+      // Generate LLM message when building starts (only once per build session)
+      if (!hasGeneratedMessageRef.current) {
+        // Get the last user message to use as context
+        const lastUserMessage = messages
+          .slice()
+          .reverse()
+          .find((msg) => msg.role === 'user')
+        
+        // Extract text from user message (prioritize text, fallback to code)
+        let userMessageText = ''
+        if (lastUserMessage) {
+          const textContent = lastUserMessage.content.find((c) => c.type === 'text')
+          const codeContent = lastUserMessage.content.find((c) => c.type === 'code')
+          userMessageText = (textContent as { text: string })?.text || (codeContent as { text: string })?.text || ''
+        }
 
-      if (!lastMessage || lastMessage.role !== 'assistant') {
-        addMessage({
-          role: 'assistant',
-          content,
+        // Set initial message and track its index
+        const initialContent: Message['content'] = [
+          { type: 'text', text: 'Building your app...' },
+        ]
+        
+        setMessages((previousMessages) => {
+          const lastMsg = previousMessages[previousMessages.length - 1]
+          if (!lastMsg || lastMsg.role !== 'assistant') {
+            buildingMessageIndexRef.current = previousMessages.length
+            return [...previousMessages, { role: 'assistant' as const, content: initialContent }]
+          } else {
+            buildingMessageIndexRef.current = previousMessages.length - 1
+            const updated = [...previousMessages]
+            updated[updated.length - 1] = {
+              ...lastMsg,
+              content: initialContent,
+            }
+            return updated
+          }
         })
-      }
 
-      if (lastMessage && lastMessage.role === 'assistant') {
-        setMessage({
-          content,
-        })
+        // Generate LLM message if we have a user message and model
+        if (userMessageText && currentModel) {
+          hasGeneratedMessageRef.current = true
+          generatedMessageRef.current = 'generating'
+          
+          console.log('Generating message for:', userMessageText)
+          
+          fetch('/api/generate-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userMessage: userMessageText,
+              model: currentModel,
+              config: languageModel,
+            }),
+          })
+            .then((res) => {
+              if (!res.ok) {
+                throw new Error(`API error: ${res.status}`)
+              }
+              return res.json()
+            })
+            .then((data) => {
+              console.log('Generated message response:', data)
+              if (data.message) {
+                generatedMessageRef.current = data.message
+                const generatedContent: Message['content'] = [
+                  { type: 'text', text: data.message },
+                ]
+                
+                // Update the message at the tracked index
+                setMessages((previousMessages) => {
+                  const updated = [...previousMessages]
+                  // Try the tracked index first
+                  if (buildingMessageIndexRef.current !== null && updated[buildingMessageIndexRef.current]) {
+                    const msg = updated[buildingMessageIndexRef.current]
+                    if (msg.role === 'assistant') {
+                      console.log('Updating message at tracked index:', buildingMessageIndexRef.current)
+                      updated[buildingMessageIndexRef.current] = {
+                        ...msg,
+                        content: generatedContent,
+                      }
+                      return updated
+                    }
+                  }
+                  
+                  // Fallback: find by content
+                  const buildingMsgIndex = updated.findIndex(
+                    (msg) =>
+                      msg.role === 'assistant' &&
+                      msg.content.some(
+                        (c) => c.type === 'text' && c.text === 'Building your app...'
+                      )
+                  )
+                  
+                  if (buildingMsgIndex !== -1) {
+                    console.log('Updating message at found index:', buildingMsgIndex)
+                    updated[buildingMsgIndex] = {
+                      ...updated[buildingMsgIndex],
+                      content: generatedContent,
+                    }
+                  } else {
+                    // Fallback: update the last assistant message
+                    const lastMsg = updated[updated.length - 1]
+                    if (lastMsg && lastMsg.role === 'assistant') {
+                      console.log('Updating last assistant message')
+                      updated[updated.length - 1] = {
+                        ...lastMsg,
+                        content: generatedContent,
+                      }
+                    } else {
+                      console.warn('Could not find assistant message to update')
+                    }
+                  }
+                  return updated
+                })
+              } else {
+                console.warn('No message in response:', data)
+                generatedMessageRef.current = null
+              }
+            })
+            .catch((err) => {
+              console.error('Failed to generate message:', err)
+              generatedMessageRef.current = null
+              hasGeneratedMessageRef.current = false
+            })
+        } else {
+          console.log('Skipping message generation:', { userMessageText, currentModel })
+        }
       }
+    } else {
+      // Reset when object is cleared (new build session)
+      generatedMessageRef.current = null
+      hasGeneratedMessageRef.current = false
+      buildingMessageIndexRef.current = null
     }
-  }, [object])
+  }, [object, messages, currentModel, languageModel])
 
   useEffect(() => {
     if (error) stop()
-  }, [error])
+  }, [error, stop])
 
   function setMessage(message: Partial<Message>, index?: number) {
     setMessages((previousMessages) => {

@@ -10,22 +10,6 @@ export function getTemplateId(id: string) {
 }
 
 const templates = {
-  'code-interpreter-v1': {
-    name: 'Python data analyst',
-    lib: [
-      'python',
-      'jupyter',
-      'numpy',
-      'pandas',
-      'matplotlib',
-      'seaborn',
-      'plotly',
-    ],
-    file: 'script.py',
-    instructions:
-      'Runs code as a Jupyter notebook cell. Strong data analysis angle. Can use complex visualisation to explain results.',
-    port: null,
-  },
   [getTemplateIdSuffix('nextjs-developer')]: {
     name: 'Next.js developer',
     lib: [
@@ -42,45 +26,6 @@ const templates = {
     instructions:
       'A Next.js 13+ app that reloads automatically. Using the pages router. IMPORTANT: Design with mobile-first responsive approach using Tailwind CSS. Use mobile-optimized layouts (flex-col on mobile, responsive breakpoints sm:, md:, lg:). Ensure touch-friendly UI with large tap targets (min 44px), readable text (min 16px base), and thumb-friendly bottom navigation. Test all interactions for mobile usability.',
     port: 3000,
-  },
-  [getTemplateIdSuffix('vue-developer')]: {
-    name: 'Vue.js developer',
-    lib: ['vue@latest', 'nuxt@3.13.0', 'tailwindcss'],
-    file: 'app/app.vue',
-    instructions:
-      'A Vue.js 3+ app that reloads automatically. Only when asked specifically for a Vue app. Design mobile-first with responsive Tailwind classes, touch-optimized interactions, and mobile-friendly layouts.',
-    port: 3000,
-  },
-  [getTemplateIdSuffix('streamlit-developer')]: {
-    name: 'Streamlit developer',
-    lib: [
-      'streamlit',
-      'pandas',
-      'numpy',
-      'matplotlib',
-      'requests',
-      'seaborn',
-      'plotly',
-    ],
-    file: 'app.py',
-    instructions: 'A streamlit app that reloads automatically. Configure for mobile viewing with st.set_page_config(layout="wide", initial_sidebar_state="collapsed") and use mobile-friendly components.',
-    port: 8501,
-  },
-  [getTemplateIdSuffix('gradio-developer')]: {
-    name: 'Gradio developer',
-    lib: [
-      'gradio',
-      'pandas',
-      'numpy',
-      'matplotlib',
-      'requests',
-      'seaborn',
-      'plotly',
-    ],
-    file: 'app.py',
-    instructions:
-      'A gradio app. Gradio Blocks/Interface should be called demo. Use mobile-responsive themes (gr.themes.Soft() or gr.themes.Glass()) and ensure UI elements are touch-friendly with appropriate sizing for mobile devices.',
-    port: 7860,
   },
 }
 
