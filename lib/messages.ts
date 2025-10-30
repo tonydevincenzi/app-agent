@@ -31,19 +31,34 @@ export type Message = {
 }
 
 export function toAISDKMessages(messages: Message[]) {
-  return messages.map((message) => ({
-    role: message.role,
-    content: message.content.map((content) => {
-      if (content.type === 'code') {
-        return {
-          type: 'text',
-          text: content.text,
-        }
-      }
+  return messages
+    .filter((message) => {
+      // Filter out messages that only contain URL content (UI-only, not valid for AI SDK)
+      const hasOnlyUrl = message.content.length === 1 && message.content[0].type === 'url'
+      return !hasOnlyUrl
+    })
+    .map((message) => ({
+      role: message.role,
+      content: message.content
+        .filter((content) => {
+          // Filter out URL content from messages (convert to text if needed, or exclude)
+          return content.type !== 'url'
+        })
+        .map((content) => {
+          if (content.type === 'code') {
+            return {
+              type: 'text',
+              text: content.text,
+            }
+          }
 
-      return content
-    }),
-  }))
+          return content
+        }),
+    }))
+    .filter((message) => {
+      // Filter out messages with empty content after filtering
+      return message.content.length > 0
+    })
 }
 
 export async function toMessageImage(files: File[]) {
