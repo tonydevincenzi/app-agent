@@ -36,6 +36,12 @@ export function getModelClient(model: LLMModel, config: LLMModelConfig) {
     defaultBaseURL?: string,
   ) => {
     const resolvedApiKey = apiKey || envVar
+    
+    // Debug logging (remove after troubleshooting)
+    if (!resolvedApiKey && envVar !== undefined) {
+      console.log('Warning: No API key available. envVar:', envVar ? 'set (hidden)' : 'undefined')
+    }
+    
     return {
       ...(resolvedApiKey && { apiKey: resolvedApiKey }),
       ...(baseURL && { baseURL }),
