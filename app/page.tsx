@@ -3,6 +3,7 @@
 import { Chat } from '@/components/chat'
 import { ChatInput } from '@/components/chat-input'
 import { Preview } from '@/components/preview'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { Message, toAISDKMessages, toMessageImage } from '@/lib/messages'
 import { LLMModelConfig } from '@/lib/models'
 import modelsList from '@/lib/models.json'
@@ -410,6 +411,9 @@ export default function Home() {
           />
         </div>
       )}
+      <div className="fixed bottom-4 left-4 z-50">
+        <ThemeToggle />
+      </div>
     </main>
   )
 }
