@@ -60,7 +60,7 @@ export function ChatInput({
   isMultiModal: boolean
   files: File[]
   handleFileChange: (change: SetStateAction<File[]>) => void
-  children: React.ReactNode
+  children?: React.ReactNode
   centered?: boolean
   onUndo: () => void
   canUndo: boolean
